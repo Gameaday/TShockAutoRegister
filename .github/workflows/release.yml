@@ -30,11 +30,10 @@ jobs:
           "DLL_PATH=$dll" >> $env:GITHUB_ENV
 
       - name: Upload AutoRegister DLL to release
-        uses: actions/upload-release-asset@v1
+        uses: softprops/action-gh-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          upload_url: ${{ github.event.release.upload_url }}
-          asset_path: ${{ env.DLL_PATH }}
-          asset_name: AutoRegister-${{ github.event.release.tag_name }}.dll
-          asset_content_type: application/octet-stream
+          files: ${{ env.DLL_PATH }}
+          name: AutoRegister-${{ github.event.release.tag_name }}.dll
+          tag_name: ${{ github.event.release.tag_name }}
