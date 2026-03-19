@@ -9,6 +9,7 @@ jobs:
     runs-on: windows-latest
     env:
       TFM: net9.0
+      PROJECT_DIR: AutoRegister
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -27,10 +28,11 @@ jobs:
       - name: Locate built DLL
         shell: pwsh
         run: |
-          $path = "AutoRegister/bin/Release/${{ env.TFM }}"
-          $dll = Get-ChildItem -Path $path -Filter AutoRegister.dll -File | Select-Object -First 1 -ExpandProperty FullName
-          if (-not $dll) { throw "AutoRegister.dll not found in $path" }
-          "DLL_PATH=$dll" >> $env:GITHUB_ENV
+          $path = "${{ env.PROJECT_DIR }}/bin/Release/${{ env.TFM }}"
+          $dlls = Get-ChildItem -Path $path -Filter AutoRegister.dll -File
+          if (-not $dlls -or $dlls.Count -eq 0) { throw "AutoRegister.dll not found in $path" }
+          if ($dlls.Count -gt 1) { throw "Multiple AutoRegister.dll files found in $path" }
+          "DLL_PATH=$($dlls[0].FullName)" >> $env:GITHUB_ENV
 
       - name: Upload AutoRegister DLL to release
         uses: softprops/action-gh-release@de2c0eb06ae2a88edb4d51b9f6d03413374b2702 # v2.2.1
