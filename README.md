@@ -20,7 +20,8 @@ When a new user joins a server, AutoRegister checks to see if there is an existi
 
 ## Building
 - Requires the .NET 9 (or newer) SDK.
-- TShock API/OTAPI binaries come from the latest official release at [Pryaxis/TShock](https://github.com/Pryaxis/TShock/releases); `TerrariaServer.exe` comes from the official download at [terraria.org](https://terraria.org). Place them alongside the built plugin when running the server. NuGet restore pulls matching TShock API assemblies for compilation.
+- Build-time: NuGet restore pulls the TShock API (6.1) assemblies used for compilation—no manual downloads needed.
+- Runtime: Use the standard TShock server distribution from [Pryaxis/TShock](https://github.com/Pryaxis/TShock/releases) and the `TerrariaServer.exe` from [terraria.org](https://terraria.org); place the built plugin in `ServerPlugins` within that server install.
 - Build with `dotnet build AutoRegister.sln -c Release`.
 
 ## Source
