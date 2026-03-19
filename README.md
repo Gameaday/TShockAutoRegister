@@ -20,7 +20,7 @@ When a new user joins a server, AutoRegister checks to see if there is an existi
 
 ## Building
 - Requires the .NET 9 (or newer) SDK.
-- Build-time: NuGet restore pulls the TShock API (6.1) assemblies used for compilation—no manual downloads needed.
+- Build-time: The project references the bundled server DLLs in `AutoRegister/references/` (extracted from a TShock 1.4.5.x server) instead of NuGet packages, so no external downloads are needed.
 - Runtime: Use the standard TShock server distribution from [Pryaxis/TShock](https://github.com/Pryaxis/TShock/releases) and the `TerrariaServer.exe` from [terraria.org](https://terraria.org); place the built plugin in `ServerPlugins` within that server install.
 - Build with `dotnet build AutoRegister.sln -c Release`.
 

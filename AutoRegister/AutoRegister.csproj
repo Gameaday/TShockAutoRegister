@@ -8,7 +8,21 @@
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="TSAPI" Version="6.1.0" />
-    <PackageReference Include="TZ.TShockAPI" Version="6.1.0" />
+    <Reference Include="TShockAPI">
+      <HintPath>references/TShockAPI.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="OTAPI">
+      <HintPath>references/OTAPI.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="TerrariaServer">
+      <HintPath>references/TerrariaServer.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="BCrypt.Net">
+      <HintPath>references/BCrypt.Net.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
   </ItemGroup>
 </Project>

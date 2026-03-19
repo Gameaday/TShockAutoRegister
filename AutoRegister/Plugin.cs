@@ -1,10 +1,10 @@
 ﻿using System;
 using System.Collections.Concurrent;
+using System.Security.Cryptography;
 using Terraria;
 using TerrariaApi.Server;
 using TShockAPI;
 using TShockAPI.DB;
-using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Xna.Framework;
 
@@ -60,6 +60,7 @@ namespace AutoRegister
         #endregion
 
         private readonly ConcurrentDictionary<string, string> tmpPasswords = new ConcurrentDictionary<string, string>();
+        private static readonly char[] PasswordAlphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789".ToCharArray();
 
         /// <summary>
         /// Tell the player their password if the account was newly generated
@@ -142,9 +143,7 @@ namespace AutoRegister
 
                 if (TShock.UserAccounts.GetUserAccountByName(player.Name) == null && player.Name != TSServerPlayer.AccountName)
                 {
-                    tmpPasswords[player.UUID] =
-                        Convert.ToBase64String(Guid.NewGuid().ToByteArray()).Substring(0, 10).Replace('l', 'L')
-                            .Replace('1', '7').Replace('I', 'i').Replace('O', 'o').Replace('0', 'o');
+                    tmpPasswords[player.UUID] = GenerateRandomAlphanumericString();
                     var account = new UserAccount(
                         player.Name,
                         string.Empty,
@@ -172,12 +171,13 @@ namespace AutoRegister
         /// <returns>The string which has been generated</returns>
         public static string GenerateRandomAlphanumericString(int length = 10)
         {
-            const string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-
-            var random = new Random();
-            var randomString = new string(Enumerable.Repeat(chars, length)
-                                                    .Select(s => s[random.Next(s.Length)]).ToArray());
-            return randomString;
+            var chars = new char[length];
+            for (int i = 0; i < length; i++)
+            {
+                var index = RandomNumberGenerator.GetInt32(PasswordAlphabet.Length);
+                chars[i] = PasswordAlphabet[index];
+            }
+            return new string(chars);
         }
 
         /// <summary>
