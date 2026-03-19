@@ -25,7 +25,7 @@ jobs:
       - name: Locate built DLL
         shell: pwsh
         run: |
-          $dll = Get-ChildItem -Path AutoRegister/bin/Release/net9.0 -Recurse -Filter AutoRegister.dll | Select-Object -First 1 -ExpandProperty FullName
+          $dll = Get-ChildItem -Path AutoRegister/bin/Release/net9.0 -Filter AutoRegister.dll | Select-Object -First 1 -ExpandProperty FullName
           if (-not $dll) { throw "AutoRegister.dll not found in net9.0 output" }
           "DLL_PATH=$dll" >> $env:GITHUB_ENV
 
