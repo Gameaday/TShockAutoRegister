@@ -8,8 +8,8 @@ jobs:
   build:
     runs-on: windows-latest
     env:
-      TFM: net9.0
       PROJECT_DIR: AutoRegister
+      PROJECT_FILE: AutoRegister/AutoRegister.csproj
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -19,16 +19,22 @@ jobs:
         with:
           dotnet-version: '9.0.x'
 
+      - name: Configure output directory
+        shell: pwsh
+        run: |
+          $output = "$env:RUNNER_TEMP/output"
+          "OUTPUT_DIR=$output" >> $env:GITHUB_ENV
+
       - name: Restore
         run: dotnet restore AutoRegister.sln
 
       - name: Build Release
-        run: dotnet build AutoRegister.sln -c Release --no-restore
+        run: dotnet build ${{ env.PROJECT_FILE }} -c Release --no-restore -p:OutDir="${{ env.OUTPUT_DIR }}/"
 
       - name: Locate built DLL
         shell: pwsh
         run: |
-          $path = "${{ env.PROJECT_DIR }}/bin/Release/${{ env.TFM }}"
+          $path = "${{ env.OUTPUT_DIR }}"
           $dlls = Get-ChildItem -Path $path -Filter AutoRegister.dll -File
           if (-not $dlls -or $dlls.Count -eq 0) { throw "AutoRegister.dll not found in $path" }
           if ($dlls.Count -gt 1) { throw "Multiple AutoRegister.dll files found in $path" }
