@@ -35,5 +35,3 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           files: ${{ env.DLL_PATH }}
-          name: AutoRegister-${{ github.event.release.tag_name }}.dll
-          tag_name: ${{ github.event.release.tag_name }}
