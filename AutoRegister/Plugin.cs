@@ -1,5 +1,5 @@
 ﻿using System;
-using System.Collections.Generic;
+using System.Collections.Concurrent;
 using Terraria;
 using TerrariaApi.Server;
 using TShockAPI;
@@ -59,9 +59,7 @@ namespace AutoRegister
         }
         #endregion
 
-        private readonly Dictionary<string, string> tmpPasswords = new Dictionary<string, string>();
-
-        private static readonly string result = GenerateRandomAlphanumericString();
+        private readonly ConcurrentDictionary<string, string> tmpPasswords = new ConcurrentDictionary<string, string>();
 
         /// <summary>
         /// Tell the player their password if the account was newly generated
@@ -70,7 +68,6 @@ namespace AutoRegister
         async void OnGreetPlayer(GreetPlayerEventArgs args)
         {
             var tsConfig = TShock.Config.Settings;
-            var player = TShock.Players[args.Who];
             string cmd = TShock.Config.Settings.CommandSpecifier;
             string red = TShockAPI.Utils.RedHighlight;
             string green = TShockAPI.Utils.GreenHighlight;
@@ -82,7 +79,11 @@ namespace AutoRegister
             // Need to put a slight delay otherwise the player might miss these important messages
             // Because the messages always come before TShock MOTD
             await Task.Delay(1000);
-            if (tmpPasswords.TryGetValue(result, out string password))
+            if (!TryGetPlayer(args.Who, out var player))
+                return;
+            if (string.IsNullOrWhiteSpace(player.UUID))
+                return;
+            if (tmpPasswords.TryRemove(player.UUID, out string password))
             { 
                 try
                 {
@@ -97,7 +98,6 @@ namespace AutoRegister
                     player.SendErrorMessage("Failed to retrieve your randomly generated password, please contact your server administrator.");
                     TShock.Log.ConsoleError("AutoRegister returned an error.");
                 }
-                tmpPasswords.Remove(result);
             }
             else if (!player.IsLoggedIn)
             {
@@ -135,11 +135,14 @@ namespace AutoRegister
 
             if (tsConfig.RequireLogin || Main.ServerSideCharacter)
             {
-                var player = TShock.Players[args.Who];
+                if (!TryGetPlayer(args.Who, out var player))
+                    return;
+                if (string.IsNullOrWhiteSpace(player.UUID))
+                    return;
 
                 if (TShock.UserAccounts.GetUserAccountByName(player.Name) == null && player.Name != TSServerPlayer.AccountName)
                 {
-                    tmpPasswords[args.Who] =
+                    tmpPasswords[player.UUID] =
                         Convert.ToBase64String(Guid.NewGuid().ToByteArray()).Substring(0, 10).Replace('l', 'L')
                             .Replace('1', '7').Replace('I', 'i').Replace('O', 'o').Replace('0', 'o');
                     var account = new UserAccount(
@@ -151,7 +154,7 @@ namespace AutoRegister
                         DateTime.UtcNow.ToString("s"),
                         string.Empty);
                     // CreateBCryptHash sets the account's Password property to the BCrypt hash of the provided password, avoiding direct BCrypt type conflicts with OTAPI.
-                    account.CreateBCryptHash(tmpPasswords[args.Who].Trim(), tsConfig.BCryptWorkFactor);
+                    account.CreateBCryptHash(tmpPasswords[player.UUID].Trim(), tsConfig.BCryptWorkFactor);
                     TShock.UserAccounts.AddUserAccount(account);
 
                     TShock.Log.ConsoleInfo($"Auto-registered an account for \"{player.Name}\" ({player.IP})");
@@ -189,6 +192,16 @@ namespace AutoRegister
                 ServerApi.Hooks.NetGreetPlayer.Deregister(this, OnGreetPlayer);
             }
             base.Dispose(disposing);
+        }
+
+        private bool TryGetPlayer(int index, out TSPlayer player)
+        {
+            player = null;
+            if (index < 0 || index >= TShock.Players.Length)
+                return false;
+
+            player = TShock.Players[index];
+            return player != null;
         }
     }
 }
