@@ -27,8 +27,9 @@ jobs:
       - name: Locate built DLL
         shell: pwsh
         run: |
-          $dll = Get-ChildItem -Path "AutoRegister/bin/Release/${{ env.TFM }}" -Filter AutoRegister.dll | Select-Object -First 1 -ExpandProperty FullName
-          if (-not $dll) { throw "AutoRegister.dll not found in ${{ env.TFM }} output" }
+          $path = "AutoRegister/bin/Release/${{ env.TFM }}"
+          $dll = Get-ChildItem -Path $path -Filter AutoRegister.dll -File | Select-Object -First 1 -ExpandProperty FullName
+          if (-not $dll) { throw "AutoRegister.dll not found in $path" }
           "DLL_PATH=$dll" >> $env:GITHUB_ENV
 
       - name: Upload AutoRegister DLL to release
