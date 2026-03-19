@@ -68,14 +68,10 @@ namespace AutoRegister
         async void OnGreetPlayer(GreetPlayerEventArgs args)
         {
             var tsConfig = TShock.Config.Settings;
-            var player = TShock.Players[args.Who];
             string cmd = TShock.Config.Settings.CommandSpecifier;
             string red = TShockAPI.Utils.RedHighlight;
             string green = TShockAPI.Utils.GreenHighlight;
             string blue = TShockAPI.Utils.BoldHighlight;
-
-            if (player == null)
-                return;
 
             if (tsConfig.DisableUUIDLogin && !tsConfig.DisableLoginBeforeJoin)
                 return;
@@ -83,7 +79,9 @@ namespace AutoRegister
             // Need to put a slight delay otherwise the player might miss these important messages
             // Because the messages always come before TShock MOTD
             await Task.Delay(1000);
-            if (tmpPasswords.TryGetValue(args.Who, out string password))
+            if (!TryGetPlayer(args.Who, out var player))
+                return;
+            if (tmpPasswords.TryRemove(args.Who, out string password))
             { 
                 try
                 {
@@ -98,7 +96,6 @@ namespace AutoRegister
                     player.SendErrorMessage("Failed to retrieve your randomly generated password, please contact your server administrator.");
                     TShock.Log.ConsoleError("AutoRegister returned an error.");
                 }
-                tmpPasswords.TryRemove(args.Who, out _);
             }
             else if (!player.IsLoggedIn)
             {
@@ -136,7 +133,8 @@ namespace AutoRegister
 
             if (tsConfig.RequireLogin || Main.ServerSideCharacter)
             {
-                var player = TShock.Players[args.Who];
+                if (!TryGetPlayer(args.Who, out var player))
+                    return;
 
                 if (TShock.UserAccounts.GetUserAccountByName(player.Name) == null && player.Name != TSServerPlayer.AccountName)
                 {
@@ -190,6 +188,16 @@ namespace AutoRegister
                 ServerApi.Hooks.NetGreetPlayer.Deregister(this, OnGreetPlayer);
             }
             base.Dispose(disposing);
+        }
+
+        private bool TryGetPlayer(int index, out TSPlayer player)
+        {
+            player = null;
+            if (index < 0 || index >= TShock.Players.Length)
+                return false;
+
+            player = TShock.Players[index];
+            return player != null;
         }
     }
 }
