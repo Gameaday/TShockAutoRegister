@@ -1,0 +1,33 @@
+name: Build and Upload AutoRegister DLL
+
+on:
+  release:
+    types: [published]
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+
+      - name: Restore
+        run: dotnet restore AutoRegister.sln
+
+      - name: Build Release
+        run: dotnet build AutoRegister.sln -c Release --no-restore
+
+      - name: Upload AutoRegister DLL
+        uses: actions/upload-artifact@v4
+        with:
+          name: AutoRegister.dll
+          path: AutoRegister/bin/Release/net9.0/AutoRegister.dll
+          if-no-files-found: error
