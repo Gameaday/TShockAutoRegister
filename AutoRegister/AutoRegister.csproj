@@ -24,16 +24,19 @@
     <Reference Include="TerrariaServer">
       <HintPath>$(MSBuildProjectDirectory)/../lib/TerrariaServer.dll</HintPath>
       <Private>false</Private>
+      <SpecificVersion>False</SpecificVersion>
     </Reference>
     
     <Reference Include="TShockAPI">
       <HintPath>$(MSBuildProjectDirectory)/../lib/TShockAPI.dll</HintPath>
       <Private>false</Private>
+      <SpecificVersion>False</SpecificVersion>
     </Reference>
     
     <Reference Include="OTAPI">
       <HintPath>$(MSBuildProjectDirectory)/../lib/OTAPI.dll</HintPath>
       <Private>false</Private>
+      <SpecificVersion>False</SpecificVersion>
     </Reference>
   </ItemGroup>
 
