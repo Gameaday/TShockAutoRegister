@@ -1,5 +1,5 @@
 ﻿using System;
-using System.Collections.Generic;
+using System.Collections.Concurrent;
 using Terraria;
 using TerrariaApi.Server;
 using TShockAPI;
@@ -59,9 +59,7 @@ namespace AutoRegister
         }
         #endregion
 
-        private readonly Dictionary<string, string> tmpPasswords = new Dictionary<string, string>();
-
-        private static readonly string result = GenerateRandomAlphanumericString();
+        private readonly ConcurrentDictionary<int, string> tmpPasswords = new ConcurrentDictionary<int, string>();
 
         /// <summary>
         /// Tell the player their password if the account was newly generated
@@ -76,13 +74,16 @@ namespace AutoRegister
             string green = TShockAPI.Utils.GreenHighlight;
             string blue = TShockAPI.Utils.BoldHighlight;
 
+            if (player == null)
+                return;
+
             if (tsConfig.DisableUUIDLogin && !tsConfig.DisableLoginBeforeJoin)
                 return;
 
             // Need to put a slight delay otherwise the player might miss these important messages
             // Because the messages always come before TShock MOTD
             await Task.Delay(1000);
-            if (tmpPasswords.TryGetValue(result, out string password))
+            if (tmpPasswords.TryGetValue(args.Who, out string password))
             { 
                 try
                 {
@@ -97,7 +98,7 @@ namespace AutoRegister
                     player.SendErrorMessage("Failed to retrieve your randomly generated password, please contact your server administrator.");
                     TShock.Log.ConsoleError("AutoRegister returned an error.");
                 }
-                tmpPasswords.Remove(result);
+                tmpPasswords.TryRemove(args.Who, out _);
             }
             else if (!player.IsLoggedIn)
             {
