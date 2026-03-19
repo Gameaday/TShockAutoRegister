@@ -22,9 +22,19 @@ jobs:
       - name: Build Release
         run: dotnet build AutoRegister.sln -c Release --no-restore
 
-      - name: Upload AutoRegister DLL
-        uses: actions/upload-artifact@v4
+      - name: Locate built DLL
+        shell: pwsh
+        run: |
+          $dll = Get-ChildItem -Path AutoRegister/bin/Release -Recurse -Filter AutoRegister.dll | Select-Object -First 1 -ExpandProperty FullName
+          if (-not $dll) { throw "AutoRegister.dll not found" }
+          "DLL_PATH=$dll" >> $env:GITHUB_ENV
+
+      - name: Upload AutoRegister DLL to release
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          name: AutoRegister-${{ github.ref_name }}
-          path: AutoRegister/bin/Release/net*/AutoRegister.dll
-          if-no-files-found: error
+          upload_url: ${{ github.event.release.upload_url }}
+          asset_path: ${{ env.DLL_PATH }}
+          asset_name: AutoRegister-${{ github.event.release.tag_name }}.dll
+          asset_content_type: application/octet-stream
