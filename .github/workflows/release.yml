@@ -25,12 +25,12 @@ jobs:
       - name: Locate built DLL
         shell: pwsh
         run: |
-          $dll = Get-ChildItem -Path AutoRegister/bin/Release -Recurse -Filter AutoRegister.dll | Select-Object -First 1 -ExpandProperty FullName
-          if (-not $dll) { throw "AutoRegister.dll not found" }
+          $dll = Get-ChildItem -Path AutoRegister/bin/Release/net9.0 -Recurse -Filter AutoRegister.dll | Select-Object -First 1 -ExpandProperty FullName
+          if (-not $dll) { throw "AutoRegister.dll not found in net9.0 output" }
           "DLL_PATH=$dll" >> $env:GITHUB_ENV
 
       - name: Upload AutoRegister DLL to release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@de2c0eb06ae2a88edb4d51b9f6d03413374b2702 # v2.2.1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
