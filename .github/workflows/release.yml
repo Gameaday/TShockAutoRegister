@@ -29,5 +29,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: AutoRegister-${{ github.ref_name }}
-          path: AutoRegister/bin/Release/net9.0/AutoRegister.dll
+          path: AutoRegister/bin/Release/net*/AutoRegister.dll
           if-no-files-found: error
