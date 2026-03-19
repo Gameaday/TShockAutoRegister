@@ -72,7 +72,7 @@ jobs:
             }
 
       - name: Publish development prerelease
-        uses: softprops/action-gh-release@de2c0eb06ae2a88edb4d51b9f6d03413374b2702 # v2.2.1
+        uses: softprops/action-gh-release@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
