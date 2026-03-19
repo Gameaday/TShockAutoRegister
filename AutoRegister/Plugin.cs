@@ -150,6 +150,7 @@ namespace AutoRegister
                         DateTime.UtcNow.ToString("s"),
                         DateTime.UtcNow.ToString("s"),
                         string.Empty);
+                    // CreateBCryptHash sets the account's Password property to the BCrypt hash of the provided password.
                     account.CreateBCryptHash(tmpPasswords[result].Trim(), tsConfig.BCryptWorkFactor);
                     TShock.UserAccounts.AddUserAccount(account);
 
