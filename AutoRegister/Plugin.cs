@@ -172,12 +172,11 @@ namespace AutoRegister
         /// <returns>The string which has been generated</returns>
         public static string GenerateRandomAlphanumericString(int length = 10)
         {
-            Span<byte> buffer = stackalloc byte[length];
-            Rng.GetBytes(buffer);
             var chars = new char[length];
             for (int i = 0; i < length; i++)
             {
-                chars[i] = PasswordAlphabet[buffer[i] % PasswordAlphabet.Length];
+                var index = RandomNumberGenerator.GetInt32(PasswordAlphabet.Length);
+                chars[i] = PasswordAlphabet[index];
             }
             return new string(chars);
         }
