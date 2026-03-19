@@ -61,7 +61,6 @@ namespace AutoRegister
 
         private readonly ConcurrentDictionary<string, string> tmpPasswords = new ConcurrentDictionary<string, string>();
         private static readonly char[] PasswordAlphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789".ToCharArray();
-        private static readonly RandomNumberGenerator Rng = RandomNumberGenerator.Create();
 
         /// <summary>
         /// Tell the player their password if the account was newly generated
