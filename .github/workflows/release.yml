@@ -1,4 +1,4 @@
-name: Build and Upload AutoRegister DLL
+name: Release
 
 on:
   release:
@@ -7,6 +7,8 @@ on:
 jobs:
   build:
     runs-on: windows-latest
+    env:
+      TFM: net9.0
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -25,8 +27,8 @@ jobs:
       - name: Locate built DLL
         shell: pwsh
         run: |
-          $dll = Get-ChildItem -Path AutoRegister/bin/Release/net9.0 -Filter AutoRegister.dll | Select-Object -First 1 -ExpandProperty FullName
-          if (-not $dll) { throw "AutoRegister.dll not found in net9.0 output" }
+          $dll = Get-ChildItem -Path "AutoRegister/bin/Release/${{ env.TFM }}" -Filter AutoRegister.dll | Select-Object -First 1 -ExpandProperty FullName
+          if (-not $dll) { throw "AutoRegister.dll not found in ${{ env.TFM }} output" }
           "DLL_PATH=$dll" >> $env:GITHUB_ENV
 
       - name: Upload AutoRegister DLL to release
