@@ -12,11 +12,17 @@ When a new user joins a server, AutoRegister checks to see if there is an existi
 - If an account by the same name as the new player already exist in the database, he/she will be notified in the chat to try a different username.
 - Automatic registration success or failure is present in the same way as TShock for improved clarity and cohesion. 
 - Writes to server console and logs if a new user was successfully registered. 
-- Compatible with PC TShock 4.5.3
+- Compatible with modern TShock (tested with TShock API 6.1 on .NET 9/10) while preserving existing configuration behavior
 
 ## Installation Guide
 1. Copy and paste AutoRegister.dll into your ServerPlugins folder. That's it.
 2. If the server is running, restart it. Otherwise start the server. 
+
+## Building
+- Requires the .NET 9 (or newer) SDK.
+- Build-time: NuGet restore pulls the TShock API (6.1) assemblies used for compilation—no manual downloads needed.
+- Runtime: Use the standard TShock server distribution from [Pryaxis/TShock](https://github.com/Pryaxis/TShock/releases) and the `TerrariaServer.exe` from [terraria.org](https://terraria.org); place the built plugin in `ServerPlugins` within that server install.
+- Build with `dotnet build AutoRegister.sln -c Release`.
 
 ## Source
 [AutoRegister](https://tshock.co/xf/index.php?resources/autoregister.234/)

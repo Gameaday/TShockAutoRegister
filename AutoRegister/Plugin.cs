@@ -139,17 +139,20 @@ namespace AutoRegister
 
                 if (TShock.UserAccounts.GetUserAccountByName(player.Name) == null && player.Name != TSServerPlayer.AccountName)
                 {
-                    tmpPasswords[result] =
+                    tmpPasswords[args.Who] =
                         Convert.ToBase64String(Guid.NewGuid().ToByteArray()).Substring(0, 10).Replace('l', 'L')
                             .Replace('1', '7').Replace('I', 'i').Replace('O', 'o').Replace('0', 'o');
-                    TShock.UserAccounts.AddUserAccount(new UserAccount(
+                    var account = new UserAccount(
                         player.Name,
-                        BCrypt.Net.BCrypt.HashPassword(tmpPasswords[result].Trim(), tsConfig.BCryptWorkFactor),
+                        string.Empty,
                         player.UUID,
                         tsConfig.DefaultRegistrationGroupName,
                         DateTime.UtcNow.ToString("s"),
                         DateTime.UtcNow.ToString("s"),
-                        ""));
+                        string.Empty);
+                    // CreateBCryptHash sets the account's Password property to the BCrypt hash of the provided password, avoiding direct BCrypt type conflicts with OTAPI.
+                    account.CreateBCryptHash(tmpPasswords[args.Who].Trim(), tsConfig.BCryptWorkFactor);
+                    TShock.UserAccounts.AddUserAccount(account);
 
                     TShock.Log.ConsoleInfo($"Auto-registered an account for \"{player.Name}\" ({player.IP})");
                 }
