@@ -1,38 +1,35 @@
-using System;
-using System.IO;
-using Newtonsoft.Json;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using TShockAPI;
 
 #nullable enable
 
 namespace AutoRegister;
 
-/// <summary>
-/// Configuration class for the AutoRegister plugin.
-/// </summary>
 public class Config
 {
-    // Length of the generated password
     public int PasswordLength { get; set; } = 10;
 
-    /// <summary>
-    /// Writes the current configuration to a JSON file.
-    /// </summary>
+    // Use a private static field for the path to avoid redundant Path.Combine calls
+    private static readonly string ConfigPath = Path.Combine(TShock.SavePath, "AutoRegister.json");
+
     public void Write()
     {
-        string path = Path.Combine(TShock.SavePath, "AutoRegister.json");
-        File.WriteAllText(path, JsonConvert.SerializeObject(this, Formatting.Indented));
+        try
+        {
+            // Using the Source Generation context for zero-reflection serialization
+            string json = JsonSerializer.Serialize(this, ConfigSourceContext.Default.Config);
+            File.WriteAllText(ConfigPath, json);
+        }
+        catch (Exception ex)
+        {
+            TShock.Log.ConsoleError($"[AutoRegister] Failed to write config: {ex.Message}");
+        }
     }
 
-    /// <summary>
-    /// Reads the configuration from the JSON file or creates a default one.
-    /// </summary>
-    /// <returns>A Config object.</returns>
     public static Config Read()
     {
-        string path = Path.Combine(TShock.SavePath, "AutoRegister.json");
-        
-        if (!File.Exists(path))
+        if (!File.Exists(ConfigPath))
         {
             var config = new Config();
             config.Write();
@@ -41,7 +38,8 @@ public class Config
 
         try
         {
-            return JsonConvert.DeserializeObject<Config>(File.ReadAllText(path)) ?? new Config();
+            string json = File.ReadAllText(ConfigPath);
+            return JsonSerializer.Deserialize(json, ConfigSourceContext.Default.Config) ?? new Config();
         }
         catch (Exception ex)
         {
@@ -50,3 +48,11 @@ public class Config
         }
     }
 }
+
+/// <summary>
+/// This tells the .NET 9 compiler to generate serialization code at compile-time.
+/// It's significantly faster and more memory-efficient than Newtonsoft.
+/// </summary>
+[JsonSourceGenerationOptions(WriteIndented = true)]
+[JsonSerializable(typeof(Config))]
+internal partial class ConfigSourceContext : JsonSerializerContext { }
