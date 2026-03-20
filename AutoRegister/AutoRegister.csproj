@@ -2,42 +2,22 @@
 
   <PropertyGroup>
     <TargetFramework>net9.0</TargetFramework>
-    <OutputType>Library</OutputType>
-    <RootNamespace>AutoRegister</RootNamespace>
-    <AssemblyName>AutoRegister</AssemblyName>
-    <!-- Prevents duplicate attribute errors (CS0579) -->
-    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
-    <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-  </PropertyGroup>
-
-  <PropertyGroup>
-    <PlatformTarget>x64</PlatformTarget>
-    <DisableHandlePackageFileConflicts>true</DisableHandlePackageFileConflicts>
+    <Nullable>enable</Nullable>
+    <OutputType>Library</OutputType>
+    
+    <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="TShock" Version="6.1.0" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Reference Include="TerrariaServer">
-      <HintPath>$(MSBuildProjectDirectory)/../lib/TerrariaServer.dll</HintPath>
-      <Private>false</Private>
-      <SpecificVersion>False</SpecificVersion>
-    </Reference>
-    
-    <Reference Include="TShockAPI">
-      <HintPath>$(MSBuildProjectDirectory)/../lib/TShockAPI.dll</HintPath>
-      <Private>false</Private>
-      <SpecificVersion>False</SpecificVersion>
-    </Reference>
-    
-    <Reference Include="OTAPI">
-      <HintPath>$(MSBuildProjectDirectory)/../lib/OTAPI.dll</HintPath>
-      <Private>false</Private>
-      <SpecificVersion>False</SpecificVersion>
-    </Reference>
-  </ItemGroup>
+  <ItemDefinitionGroup>
+    <PackageReference>
+      <ExcludeAssets>runtime</ExcludeAssets>
+    </PackageReference>
+  </ItemDefinitionGroup>
 
 </Project>
