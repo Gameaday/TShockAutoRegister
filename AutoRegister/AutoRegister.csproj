@@ -17,6 +17,8 @@
 
   <ItemGroup>
     <PackageReference Include="TShock" Version="6.1.0" />
+    <PackageReference Include="BCrypt.Net-Next" Version="4.0.3" Aliases="BCryptNet" />
   </ItemGroup>
+
 
 </Project>
