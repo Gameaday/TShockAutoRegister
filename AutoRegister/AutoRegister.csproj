@@ -5,20 +5,16 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <OutputType>Library</OutputType>
-    
     <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
-    
     <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
-    
-    <Version>1.1.0</Version>
+    <Version>2.2.5</Version>
     <Authors>HistoryLabs</Authors>
-    <Description>AutoRegister plugin for TShock 6.1.0+</Description>
+    <Description>AutoRegister plugin for TShock 6.1.0+ with Alias Resolution</Description>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="TShock" Version="6.1.0" />
     <PackageReference Include="BCrypt.Net-Next" Version="4.0.3" Aliases="BCryptNet" />
   </ItemGroup>
-
 
 </Project>
