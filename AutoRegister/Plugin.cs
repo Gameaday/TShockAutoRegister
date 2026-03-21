@@ -7,6 +7,9 @@ using TShockAPI;
 using TShockAPI.DB;
 using TShockAPI.Hooks;
 
+// THE FIX: Alias the specific class to bypass the collision
+using BC = BCrypt.Net.BCrypt;
+
 #nullable enable
 
 namespace AutoRegister;
@@ -15,7 +18,7 @@ namespace AutoRegister;
 public class AutoRegister : TerrariaPlugin
 {
     public override string Name => "AutoRegister";
-    public override Version Version => new Version(2, 2, 2); 
+    public override Version Version => new Version(2, 2, 3); 
     public override string Author => "HistoryLabs";
 
     private readonly ConcurrentDictionary<string, string> _pendingPasswords = new();
@@ -63,22 +66,21 @@ public class AutoRegister : TerrariaPlugin
         {
             string rawPassword = GenerateSecurePassword(_config.PasswordLength);
             
-            // FULLY QUALIFIED CALL: This bypasses the "ambiguous reference" and "missing definition" errors.
-            // TShock 6.1 bundles BCrypt.Net.Next.
-            string hashedPassword = BCrypt.Net.BCrypt.HashPassword(rawPassword);
+            // Use our alias 'BC' here. This avoids the OTAPI collision.
+            string hashedPassword = BC.HashPassword(rawPassword);
 
+            // TShock 6.1.0 UserAccount Constructor (7 arguments)
             var newAccount = new UserAccount(
-                player.Name,
-                hashedPassword,
-                player.UUID,
-                tsSettings.DefaultRegistrationGroupName,
-                DateTime.UtcNow.ToString("s"),
-                DateTime.UtcNow.ToString("s"),
-                string.Empty
+                player.Name,                                // Name
+                hashedPassword,                             // Password
+                player.UUID,                                // UUID
+                tsSettings.DefaultRegistrationGroupName,    // Group
+                DateTime.UtcNow.ToString("s"),              // Registered
+                DateTime.UtcNow.ToString("s"),              // LastAccessed
+                ""                                          // Suffix (Email/Notes)
             );
 
             TShock.UserAccounts.AddUserAccount(newAccount);
-            
             _pendingPasswords[player.UUID] = rawPassword;
             player.Account = newAccount;
             
@@ -101,7 +103,6 @@ public class AutoRegister : TerrariaPlugin
         {
             await Task.Delay(2000, ct);
             var player = TShock.Players[who];
-            
             if (player == null || player.UUID != expectedUuid || ct.IsCancellationRequested) return;
 
             if (_pendingPasswords.TryRemove(player.UUID, out var password))
