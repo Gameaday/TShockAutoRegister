@@ -10,42 +10,14 @@ public class Config
 {
     public int PasswordLength { get; set; } = 10;
 
-    // Use a private static field for the path to avoid redundant Path.Combine calls
+    // Standard TShock path for plugin-specific configs
     private static readonly string ConfigPath = Path.Combine(TShock.SavePath, "AutoRegister.json");
 
     public void Write()
     {
         try
         {
-            // Using the Source Generation context for zero-reflection serialization
-            string json = JsonSerializer.Serialize(this, ConfigSourceContext.Default.Config);
-            File.WriteAllText(ConfigPath, json);
-        }
-        catch (Exception ex)
-        {
-            TShock.Log.ConsoleError($"[AutoRegister] Failed to write config: {ex.Message}");
-        }
-    }
-using System.Text.Json;
-using System.Text.Json.Serialization;
-using TShockAPI;
-
-#nullable enable
-
-namespace AutoRegister;
-
-public class Config
-{
-    public int PasswordLength { get; set; } = 10;
-
-    // IMPROVEMENT: Standard TShock path for plugin-specific configs
-    private static readonly string ConfigPath = Path.Combine(TShock.SavePath, "AutoRegister.json");
-
-    public void Write()
-    {
-        try
-        {
-            // Ensure the directory exists (just in case)
+            // Ensure the directory exists
             Directory.CreateDirectory(Path.GetDirectoryName(ConfigPath)!);
 
             string json = JsonSerializer.Serialize(this, ConfigSourceContext.Default.Config);
@@ -69,7 +41,7 @@ public class Config
             }
 
             string json = File.ReadAllText(ConfigPath);
-            // Source-generated deserialization is near-instant
+            // Source-generated deserialization is near-instant and reflection-free
             return JsonSerializer.Deserialize(json, ConfigSourceContext.Default.Config) ?? new Config();
         }
         catch (Exception ex)
@@ -80,6 +52,11 @@ public class Config
     }
 }
 
+/// <summary>
+/// Source generation context for high-performance JSON serialization in .NET 9.
+/// </summary>
 [JsonSourceGenerationOptions(WriteIndented = true, PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase)]
 [JsonSerializable(typeof(Config))]
-internal partial class ConfigSourceContext : JsonSerializerContext { }
+internal partial class ConfigSourceContext : JsonSerializerContext 
+{ 
+}
