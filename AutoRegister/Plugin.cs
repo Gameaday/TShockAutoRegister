@@ -48,7 +48,7 @@ public class AutoRegister : TerrariaPlugin
         base.Dispose(disposing);
     }
 
-    private void OnServerJoin(JoinEventArgs args)
+        private void OnServerJoin(JoinEventArgs args)
     {
         var player = TShock.Players[args.Who];
         if (player == null || string.IsNullOrEmpty(player.UUID) || player.Name == TSServerPlayer.AccountName) 
@@ -57,35 +57,34 @@ public class AutoRegister : TerrariaPlugin
         var tsSettings = TShock.Config.Settings;
         if (!tsSettings.RequireLogin && !Main.ServerSideCharacter) return;
 
-        // Verify account existence
         var account = TShock.UserAccounts.GetUserAccountByName(player.Name);
 
         if (account == null)
         {
             string rawPassword = GenerateSecurePassword(_config.PasswordLength);
             
-            // USE THE NATIVE TSHOCK MANAGER HASHING
-            string hashedPassword = TShock.UserAccounts.CreateBCryptHash(rawPassword);
+            // FIX: Use the TShock Utils helper for hashing instead of the Manager
+            string hashedPassword = TShock.Utils.HashPassword(rawPassword);
 
-            // TShock 6.1 Constructor: Name, Password, UUID, Group, Registered, LastAccessed, Suffix
+            // Standard TShock 6.1 Constructor
             var newAccount = new UserAccount(
-                player.Name,
-                hashedPassword,
-                player.UUID,
-                tsSettings.DefaultRegistrationGroupName,
-                DateTime.UtcNow.ToString("s"),
-                DateTime.UtcNow.ToString("s"),
-                string.Empty // Suffix/Email
+                player.Name,                                // Name
+                hashedPassword,                             // Password (hashed)
+                player.UUID,                                // UUID
+                tsSettings.DefaultRegistrationGroupName,    // Group
+                DateTime.UtcNow.ToString("s"),              // Registered
+                DateTime.UtcNow.ToString("s"),              // LastAccessed
+                ""                                          // Suffix/Email
             );
 
             TShock.UserAccounts.AddUserAccount(newAccount);
             
             _pendingPasswords[player.UUID] = rawPassword;
             
-            // Assign the account session immediately
+            // Log the player in immediately
             player.Account = newAccount;
             
-            TShock.Log.ConsoleInfo($"[AutoRegister] Account created and session started for \"{player.Name}\".");
+            TShock.Log.ConsoleInfo($"[AutoRegister] Created and authenticated \"{player.Name}\".");
         }
     }
 
