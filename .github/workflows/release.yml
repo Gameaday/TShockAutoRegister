@@ -1,4 +1,4 @@
-Name: Release
+name: Release
 
 on:
   release:
@@ -11,9 +11,7 @@ jobs:
   build:
     runs-on: windows-latest
     env:
-      # Direct path to the project file
       PROJECT_FILE: AutoRegister/AutoRegister.csproj
-      # A clean staging area for the final DLL
       STAGING_DIR: ${{ github.workspace }}/out
 
     steps:
@@ -29,16 +27,16 @@ jobs:
         run: dotnet restore AutoRegister.sln
 
       - name: Publish AutoRegister
-        # 'publish' creates a clean, deployable DLL in the staging directory
+        # -p:CopyLocalLockFileAssemblies=false ensures a clean DLL for TShock
         run: >
           dotnet publish ${{ env.PROJECT_FILE }} 
           -c Release 
           --no-restore 
           -o ${{ env.STAGING_DIR }}
+          -p:CopyLocalLockFileAssemblies=false
 
       - name: Upload AutoRegister DLL to Release
         uses: softprops/action-gh-release@v2
         with:
-          # Points directly to the file in our staging directory
           files: ${{ env.STAGING_DIR }}/AutoRegister.dll
           fail_on_unmatched_files: true
