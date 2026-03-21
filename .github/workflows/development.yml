@@ -3,7 +3,7 @@ Name: Development Prerelease
 on:
   push:
     branches: [main]
-  workflow_dispatch:
+  workflow_dispatch: # Allows you to run it manually if needed
 
 permissions:
   contents: write
@@ -12,9 +12,9 @@ jobs:
   build:
     runs-on: windows-latest
     env:
-      PROJECT_PATH: AutoRegister/AutoRegister.csproj
-      # This is where the clean DLL will go
-      STAGING_DIR: ${{ github.workspace }}/publish 
+      # Adjusted to match your standalone repo structure
+      PROJECT_FILE: AutoRegister/AutoRegister.csproj
+      STAGING_DIR: ${{ github.workspace }}/out
       DEV_TAG: development
       DEV_RELEASE_NAME: "Development Build"
 
@@ -30,40 +30,41 @@ jobs:
       - name: Restore
         run: dotnet restore AutoRegister.sln
 
-      - name: Publish Plugin
-        # 'publish' is cleaner than 'build' for CI. 
-        # -p:CopyLocalLockFileAssemblies=false ensures you don't bundle TShock/Terraria DLLs.
+      - name: Publish AutoRegister
+        # 'publish' creates a clean DLL in the staging directory
         run: >
-          dotnet publish ${{ env.PROJECT_PATH }} 
+          dotnet publish ${{ env.PROJECT_FILE }} 
           -c Release 
           --no-restore 
           -o ${{ env.STAGING_DIR }}
 
-      - name: Remove Existing Release and Tag
+      - name: Update Development Release
         uses: actions/github-script@v7
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const tag = process.env.DEV_TAG;
             const { owner, repo } = context.repo;
+            
+            // 1. Try to delete the old release so the new one can take its place
             try {
               const release = await github.rest.repos.getReleaseByTag({ owner, repo, tag });
               await github.rest.repos.deleteRelease({ owner, repo, release_id: release.data.id });
-              core.info(`Deleted release ${release.data.id}`);
-            } catch (e) { core.info("No release to delete."); }
+              core.info(`Deleted old release.`);
+            } catch (e) { core.info("No existing release to delete."); }
             
+            // 2. Delete the old tag so it points to the new commit
             try {
               await github.rest.git.deleteRef({ owner, repo, ref: `tags/${tag}` });
-              core.info(`Deleted tag ${tag}`);
-            } catch (e) { core.info("No tag to delete."); }
+              core.info(`Deleted old tag.`);
+            } catch (e) { core.info("No existing tag to delete."); }
 
-      - name: Publish Prerelease
+      - name: Upload New DLL
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ env.DEV_TAG }}
           name: ${{ env.DEV_RELEASE_NAME }}
           prerelease: true
-          # Points directly to the DLL in the publish folder
           files: ${{ env.STAGING_DIR }}/AutoRegister.dll
           fail_on_unmatched_files: true
           target_commitish: ${{ github.sha }}
