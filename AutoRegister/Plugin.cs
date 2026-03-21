@@ -6,6 +6,7 @@ using TerrariaApi.Server;
 using TShockAPI;
 using TShockAPI.DB;
 using TShockAPI.Hooks;
+using BCrypt.Net; // Required for TShock's bundled hashing
 
 #nullable enable
 
@@ -53,43 +54,46 @@ public class AutoRegister : TerrariaPlugin
 
     private void OnServerJoin(JoinEventArgs args)
     {
-        var tsSettings = TShock.Config.Settings;
         var player = TShock.Players[args.Who];
+        if (player == null || string.IsNullOrEmpty(player.UUID) || player.Name == TSServerPlayer.AccountName) 
+            return;
 
-        if (player == null || string.IsNullOrEmpty(player.UUID)) return;
-        if (player.Name == TSServerPlayer.AccountName) return;
+        var tsSettings = TShock.Config.Settings;
 
-        // Logic check: Don't run if login isn't required by the server
-        if (!tsSettings.RequireLogin && !Main.ServerSideCharacter) return;
+        // Skip if the server doesn't require accounts/login
+        if (!tsSettings.RequireLogin && !Main.ServerSideCharacter) 
+            return;
 
-        // Optimized Lookup: Check Name first, then UUID
-        var account = TShock.UserAccounts.GetUserAccountByName(player.Name) 
-                      ?? TShock.UserAccounts.GetUserAccountByUUID(player.UUID);
+        // Check if an account already exists by name
+        var account = TShock.UserAccounts.GetUserAccountByName(player.Name);
 
         if (account == null)
         {
             string rawPassword = GenerateSecurePassword(_config.PasswordLength);
             
-            var newAccount = new UserAccount(
-                player.Name,
-                TShock.UserAccounts.CreateBCryptHash(rawPassword),
-                player.UUID,
-                tsSettings.DefaultRegistrationGroupName,
-                DateTime.UtcNow.ToString("s"),
-                DateTime.UtcNow.ToString("s"),
-                string.Empty
-            );
+            // Hash password using TShock's preferred BCrypt implementation
+            string hashedPassword = BCrypt.Net.BCrypt.HashPassword(rawPassword);
 
-            if (TShock.UserAccounts.AddUserAccount(newAccount))
+            var newAccount = new UserAccount
             {
-                _pendingPasswords[player.UUID] = rawPassword;
-                
-                // CRITICAL IMPROVEMENT: Automatically log the player in
-                // This prevents the "Please login" nag immediately.
-                player.SetUserAccount(newAccount);
-                
-                TShock.Log.ConsoleInfo($"[AutoRegister] Created and logged in \"{player.Name}\" ({player.UUID})");
-            }
+                Name = player.Name,
+                Password = hashedPassword,
+                UUID = player.UUID,
+                Group = tsSettings.DefaultRegistrationGroupName,
+                Registered = DateTime.UtcNow.ToString("s"),
+                LastAccessed = DateTime.UtcNow.ToString("s")
+            };
+
+            // Register the account in the TShock database
+            TShock.UserAccounts.AddUserAccount(newAccount);
+            
+            // Cache the password for the greeting message
+            _pendingPasswords[player.UUID] = rawPassword;
+            
+            // Automatically log the player into their new account session
+            player.Account = newAccount;
+            
+            TShock.Log.ConsoleInfo($"[AutoRegister] Created and authenticated \"{player.Name}\" ({player.UUID})");
         }
     }
 
@@ -98,6 +102,7 @@ public class AutoRegister : TerrariaPlugin
         var player = TShock.Players[args.Who];
         if (player == null || string.IsNullOrEmpty(player.UUID)) return;
 
+        // Only start the greeting task if this is a newly registered user
         if (_pendingPasswords.ContainsKey(player.UUID))
         {
             _ = SendGreetingAsync(args.Who, player.UUID, _disposalTokenSource.Token);
@@ -108,15 +113,18 @@ public class AutoRegister : TerrariaPlugin
     {
         try 
         {
-            // Give the client a moment to finish loading the world
+            // Delay ensures message arrives after world-load text
             await Task.Delay(2000, ct);
 
             var player = TShock.Players[who];
-            if (player == null || player.UUID != expectedUuid || ct.IsCancellationRequested) return;
+            
+            // Validate identity to ensure the player slot hasn't been reused
+            if (player == null || player.UUID != expectedUuid || ct.IsCancellationRequested) 
+                return;
 
             if (_pendingPasswords.TryRemove(player.UUID, out var password))
             {
-                const string accent = "ff6347"; // History Labs Tomato
+                const string accent = "ff6347"; // History Labs Branding
                 string cmd = TShock.Config.Settings.CommandSpecifier;
 
                 player.SendMessage($"[c/{accent}:[Auto-Reg]] Success! Your account is registered and logged in.", Color.White);
@@ -124,20 +132,20 @@ public class AutoRegister : TerrariaPlugin
                 player.SendMessage($"[c/{accent}:[Auto-Reg]] Use {cmd}password <old> <new> to change it.", Color.White);
             }
         }
-        catch (TaskCanceledException) { }
+        catch (TaskCanceledException) { /* Handle plugin disposal */ }
     }
 
     private void OnReload(ReloadEventArgs args)
     {
         _config = Config.Read();
-        args.Player?.SendSuccessMessage("[AutoRegister] Config reloaded.");
+        args.Player?.SendSuccessMessage("[AutoRegister] Configuration reloaded successfully.");
     }
 
     private void ReloadCommand(CommandArgs args) => OnReload(new ReloadEventArgs(args.Player));
 
     private static string GenerateSecurePassword(int length)
     {
-        // Allocation-free string generation using RandomNumberGenerator
+        // High-performance, cryptographically secure string generation
         return string.Create(length, PasswordAlphabet, (chars, state) =>
         {
             for (int i = 0; i < chars.Length; i++)
