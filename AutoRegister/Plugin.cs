@@ -48,7 +48,7 @@ public class AutoRegister : TerrariaPlugin
         base.Dispose(disposing);
     }
 
-        private void OnServerJoin(JoinEventArgs args)
+    private void OnServerJoin(JoinEventArgs args)
     {
         var player = TShock.Players[args.Who];
         if (player == null || string.IsNullOrEmpty(player.UUID) || player.Name == TSServerPlayer.AccountName) 
@@ -63,25 +63,23 @@ public class AutoRegister : TerrariaPlugin
         {
             string rawPassword = GenerateSecurePassword(_config.PasswordLength);
             
-            // FIX: Use the TShock Utils helper for hashing instead of the Manager
-            string hashedPassword = TShock.Utils.HashPassword(rawPassword);
+            // FULLY QUALIFIED CALL: This bypasses the "ambiguous reference" and "missing definition" errors.
+            // TShock 6.1 bundles BCrypt.Net.Next.
+            string hashedPassword = BCrypt.Net.BCrypt.HashPassword(rawPassword);
 
-            // Standard TShock 6.1 Constructor
             var newAccount = new UserAccount(
-                player.Name,                                // Name
-                hashedPassword,                             // Password (hashed)
-                player.UUID,                                // UUID
-                tsSettings.DefaultRegistrationGroupName,    // Group
-                DateTime.UtcNow.ToString("s"),              // Registered
-                DateTime.UtcNow.ToString("s"),              // LastAccessed
-                ""                                          // Suffix/Email
+                player.Name,
+                hashedPassword,
+                player.UUID,
+                tsSettings.DefaultRegistrationGroupName,
+                DateTime.UtcNow.ToString("s"),
+                DateTime.UtcNow.ToString("s"),
+                string.Empty
             );
 
             TShock.UserAccounts.AddUserAccount(newAccount);
             
             _pendingPasswords[player.UUID] = rawPassword;
-            
-            // Log the player in immediately
             player.Account = newAccount;
             
             TShock.Log.ConsoleInfo($"[AutoRegister] Created and authenticated \"{player.Name}\".");
