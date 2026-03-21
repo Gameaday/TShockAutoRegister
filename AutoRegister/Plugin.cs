@@ -57,41 +57,42 @@ public class AutoRegister : TerrariaPlugin
         var tsSettings = TShock.Config.Settings;
         if (!tsSettings.RequireLogin && !Main.ServerSideCharacter) return;
 
+        // Verify account existence
         var account = TShock.UserAccounts.GetUserAccountByName(player.Name);
 
         if (account == null)
         {
             string rawPassword = GenerateSecurePassword(_config.PasswordLength);
             
-            // NATIVE FIX: Use TShock's built-in BCrypt hashing helper
+            // USE THE NATIVE TSHOCK MANAGER HASHING
             string hashedPassword = TShock.UserAccounts.CreateBCryptHash(rawPassword);
 
-            // NATIVE FIX: Use the standard TShock UserAccount constructor
+            // TShock 6.1 Constructor: Name, Password, UUID, Group, Registered, LastAccessed, Suffix
             var newAccount = new UserAccount(
                 player.Name,
                 hashedPassword,
                 player.UUID,
                 tsSettings.DefaultRegistrationGroupName,
-                DateTime.UtcNow.ToString("s"), // Registered
-                DateTime.UtcNow.ToString("s"), // LastAccessed
-                ""                             // SuffixedData (Email/Notes)
+                DateTime.UtcNow.ToString("s"),
+                DateTime.UtcNow.ToString("s"),
+                string.Empty // Suffix/Email
             );
 
             TShock.UserAccounts.AddUserAccount(newAccount);
             
             _pendingPasswords[player.UUID] = rawPassword;
+            
+            // Assign the account session immediately
             player.Account = newAccount;
             
-            TShock.Log.ConsoleInfo($"[AutoRegister] Created and authenticated \"{player.Name}\" ({player.UUID})");
+            TShock.Log.ConsoleInfo($"[AutoRegister] Account created and session started for \"{player.Name}\".");
         }
     }
 
     private void OnGreetPlayer(GreetPlayerEventArgs args)
     {
         var player = TShock.Players[args.Who];
-        if (player == null || string.IsNullOrEmpty(player.UUID)) return;
-
-        if (_pendingPasswords.ContainsKey(player.UUID))
+        if (player != null && !string.IsNullOrEmpty(player.UUID) && _pendingPasswords.ContainsKey(player.UUID))
         {
             _ = SendGreetingAsync(args.Who, player.UUID, _disposalTokenSource.Token);
         }
@@ -122,7 +123,7 @@ public class AutoRegister : TerrariaPlugin
     private void OnReload(ReloadEventArgs args)
     {
         _config = Config.Read();
-        args.Player?.SendSuccessMessage("[AutoRegister] Configuration reloaded successfully.");
+        args.Player?.SendSuccessMessage("[AutoRegister] Config reloaded.");
     }
 
     private void ReloadCommand(CommandArgs args) => OnReload(new ReloadEventArgs(args.Player));
