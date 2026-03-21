@@ -1,4 +1,4 @@
-name: Release
+Name: Release
 
 on:
   release:
@@ -11,7 +11,11 @@ jobs:
   build:
     runs-on: windows-latest
     env:
+      # Direct path to the project file
       PROJECT_FILE: AutoRegister/AutoRegister.csproj
+      # A clean staging area for the final DLL
+      STAGING_DIR: ${{ github.workspace }}/out
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -21,30 +25,20 @@ jobs:
         with:
           dotnet-version: '9.0.x'
 
-      - name: Configure output directory
-        shell: pwsh
-        run: |
-          $output = "$env:RUNNER_TEMP/output"
-          "OUTPUT_DIR=$output" >> $env:GITHUB_ENV
-
       - name: Restore
         run: dotnet restore AutoRegister.sln
 
-      - name: Build Release
-        run: dotnet build ${{ env.PROJECT_FILE }} -c Release --no-restore -p:OutDir="${{ env.OUTPUT_DIR }}/"
+      - name: Publish AutoRegister
+        # 'publish' creates a clean, deployable DLL in the staging directory
+        run: >
+          dotnet publish ${{ env.PROJECT_FILE }} 
+          -c Release 
+          --no-restore 
+          -o ${{ env.STAGING_DIR }}
 
-      - name: Locate built DLL
-        shell: pwsh
-        run: |
-          $path = "${{ env.OUTPUT_DIR }}"
-          $dlls = Get-ChildItem -Path $path -Filter AutoRegister.dll -File
-          if (-not $dlls -or $dlls.Count -eq 0) { throw "AutoRegister.dll not found in $path" }
-          if ($dlls.Count -gt 1) { throw "Multiple AutoRegister.dll files found in $path" }
-          "DLL_PATH=$($dlls[0].FullName)" >> $env:GITHUB_ENV
-
-      - name: Upload AutoRegister DLL to release
-        uses: softprops/action-gh-release@153bb8e04406b158c6c84fc1615b65b24149a1fe # v2.6.1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Upload AutoRegister DLL to Release
+        uses: softprops/action-gh-release@v2
         with:
-          files: ${{ env.DLL_PATH }}
+          # Points directly to the file in our staging directory
+          files: ${{ env.STAGING_DIR }}/AutoRegister.dll
+          fail_on_unmatched_files: true
