@@ -3,6 +3,13 @@ name: Development Prerelease
 on:
   push:
     branches: [main]
+    # Only run if actual code or project files changed
+    paths:
+      - 'AutoRegister/**'
+      - 'AutoRegister.sln'
+      - '.github/workflows/development.yml'
+  pull_request:
+    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -30,6 +37,7 @@ jobs:
         run: dotnet restore AutoRegister.sln
 
       - name: Publish AutoRegister
+        # We use 'publish' to ensure a clean, deployable DLL output
         run: >
           dotnet publish ${{ env.PROJECT_FILE }} 
           -c Release 
@@ -38,6 +46,8 @@ jobs:
           -p:CopyLocalLockFileAssemblies=false
 
       - name: Update Development Release
+        # This step only runs on 'push' to main, not on PRs
+        if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
         uses: actions/github-script@v7
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
@@ -57,6 +67,8 @@ jobs:
             } catch (e) { core.info("No existing tag to delete."); }
 
       - name: Upload New DLL
+        # This step also only runs on 'push' to main
+        if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ env.DEV_TAG }}
