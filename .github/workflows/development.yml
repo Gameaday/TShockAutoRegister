@@ -1,4 +1,4 @@
-name: Development Prerelease
+Name: Development Prerelease
 
 on:
   push:
@@ -12,9 +12,12 @@ jobs:
   build:
     runs-on: windows-latest
     env:
-      PROJECT_FILE: AutoRegister/AutoRegister.csproj
+      PROJECT_PATH: AutoRegister/AutoRegister.csproj
+      # This is where the clean DLL will go
+      STAGING_DIR: ${{ github.workspace }}/publish 
       DEV_TAG: development
-      DEV_RELEASE_NAME: Development build
+      DEV_RELEASE_NAME: "Development Build"
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -24,61 +27,43 @@ jobs:
         with:
           dotnet-version: '9.0.x'
 
-      - name: Configure output directory
-        shell: pwsh
-        run: |
-          $output = "$env:RUNNER_TEMP/output"
-          "OUTPUT_DIR=$output" >> $env:GITHUB_ENV
-
       - name: Restore
         run: dotnet restore AutoRegister.sln
 
-      - name: Build Release
-        run: dotnet build ${{ env.PROJECT_FILE }} -c Release --no-restore -p:OutDir="${{ env.OUTPUT_DIR }}/"
+      - name: Publish Plugin
+        # 'publish' is cleaner than 'build' for CI. 
+        # -p:CopyLocalLockFileAssemblies=false ensures you don't bundle TShock/Terraria DLLs.
+        run: >
+          dotnet publish ${{ env.PROJECT_PATH }} 
+          -c Release 
+          --no-restore 
+          -o ${{ env.STAGING_DIR }}
 
-      - name: Locate built DLL
-        shell: pwsh
-        run: |
-          $path = "${{ env.OUTPUT_DIR }}"
-          $dlls = Get-ChildItem -Path $path -Filter AutoRegister.dll -File
-          if (-not $dlls -or $dlls.Count -eq 0) { throw "AutoRegister.dll not found in $path" }
-          if ($dlls.Count -gt 1) { throw "Multiple AutoRegister.dll files found in $path" }
-          "DLL_PATH=$($dlls[0].FullName)" >> $env:GITHUB_ENV
-
-      - name: Remove existing development prerelease and tag
-        uses: actions/github-script@d57b35f171b8a5f7b61aaf7cdbe29c78b2ce0b03 # v7.0.1
+      - name: Remove Existing Release and Tag
+        uses: actions/github-script@v7
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const tag = process.env.DEV_TAG;
-            const owner = context.repo.owner;
-            const repo = context.repo.repo;
+            const { owner, repo } = context.repo;
             try {
-              const release = await github.repos.getReleaseByTag({ owner, repo, tag });
-              core.info(`Deleting existing release ${release.data.id} for tag ${tag}`);
-              await github.repos.deleteRelease({ owner, repo, release_id: release.data.id });
-            } catch (error) {
-              core.info(`No existing release found for tag ${tag}: ${error.message}`);
-            }
+              const release = await github.rest.repos.getReleaseByTag({ owner, repo, tag });
+              await github.rest.repos.deleteRelease({ owner, repo, release_id: release.data.id });
+              core.info(`Deleted release ${release.data.id}`);
+            } catch (e) { core.info("No release to delete."); }
+            
             try {
-              await github.git.deleteRef({ owner, repo, ref: `tags/${tag}` });
+              await github.rest.git.deleteRef({ owner, repo, ref: `tags/${tag}` });
               core.info(`Deleted tag ${tag}`);
-            } catch (error) {
-              if (error.status === 422 || error.status === 404) {
-                core.info(`Tag ${tag} did not exist or was already removed`);
-              } else {
-                throw error;
-              }
-            }
+            } catch (e) { core.info("No tag to delete."); }
 
-      - name: Publish development prerelease
-        uses: softprops/action-gh-release@153bb8e04406b158c6c84fc1615b65b24149a1fe # v2.6.1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Publish Prerelease
+        uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ env.DEV_TAG }}
           name: ${{ env.DEV_RELEASE_NAME }}
           prerelease: true
-          files: ${{ env.DLL_PATH }}
+          # Points directly to the DLL in the publish folder
+          files: ${{ env.STAGING_DIR }}/AutoRegister.dll
           fail_on_unmatched_files: true
           target_commitish: ${{ github.sha }}
