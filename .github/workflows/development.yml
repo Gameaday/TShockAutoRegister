@@ -104,3 +104,12 @@ jobs:
             } catch (e) { core.info("No existing tag found to delete."); }
 
       - name: Upload New DLL
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.DEV_TAG }}
+          name: ${{ env.DEV_RELEASE_NAME }}
+          prerelease: true
+          files: ${{ env.STAGING_DIR }}/AutoRegister.dll
+          fail_on_unmatched_files: true
+          # Forces the tag to follow the current commit SHA
+          target_commitish: ${{ github.sha }} 
