@@ -1,50 +1,62 @@
 using System;
 using System.IO;
-using System.Linq;
-using System.Reflection;
-using System.Runtime.CompilerServices;
-using Newtonsoft.Json;
 using TShockAPI;
 
 #nullable enable
 
-namespace AutoRegister
+namespace AutoRegister;
+
+public class Config
 {
-    public class Config
+    public int PasswordLength { get; set; } = 10;
+
+    // Standard TShock path for plugin-specific configs
+    private static readonly string ConfigPath = Path.Combine(TShock.SavePath, "AutoRegister.json");
+
+    public void Write()
     {
-        public int PasswordLength { get; set; } = 10;
-        
-        // This color code (Tomato) is used for History Labs branding in the chat prefix
-        public string ChatPrefixColor { get; set; } = "ff6347";
-
-        public void Write()
+        try
         {
-            string path = Path.Combine(TShock.SavePath, "AutoRegister.json");
-            Directory.CreateDirectory(TShock.SavePath);
-            File.WriteAllText(path, JsonConvert.SerializeObject(this, Formatting.Indented));
+            // Ensure the directory exists
+            Directory.CreateDirectory(Path.GetDirectoryName(ConfigPath)!);
+
+            string json = JsonSerializer.Serialize(this, ConfigSourceContext.Default.Config);
+            File.WriteAllText(ConfigPath, json);
         }
-
-        public static Config Read()
+        catch (Exception ex)
         {
-            string filepath = Path.Combine(TShock.SavePath, "AutoRegister.json");
-            try
-            {
-                Directory.CreateDirectory(TShock.SavePath);
-                if (!File.Exists(filepath))
-                {
-                    Config def = new Config();
-                    def.Write();
-                    return def;
-                }
-                var content = File.ReadAllText(filepath);
-                return JsonConvert.DeserializeObject<Config>(content) ?? new Config();
-            }
-            catch (Exception ex)
-            {
-                TShock.Log.ConsoleError($"[AutoRegister] Config error: {ex.Message}");
-                return new Config();
-            }
+            TShock.Log.ConsoleError($"[AutoRegister] Failed to write config: {ex.Message}");
         }
     }
-    
+
+    public static Config Read()
+    {
+        try
+        {
+            if (!File.Exists(ConfigPath))
+            {
+                var config = new Config();
+                config.Write();
+                return config;
+            }
+
+            string json = File.ReadAllText(ConfigPath);
+            // Source-generated deserialization is near-instant and reflection-free
+            return JsonSerializer.Deserialize(json, ConfigSourceContext.Default.Config) ?? new Config();
+        }
+        catch (Exception ex)
+        {
+            TShock.Log.ConsoleError($"[AutoRegister] Failed to read config: {ex.Message}");
+            return new Config();
+        }
+    }
+}
+
+/// <summary>
+/// Source generation context for high-performance JSON serialization in .NET 9.
+/// </summary>
+[JsonSourceGenerationOptions(WriteIndented = true, PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase)]
+[JsonSerializable(typeof(Config))]
+internal partial class ConfigSourceContext : JsonSerializerContext 
+{ 
 }
