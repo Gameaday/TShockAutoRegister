@@ -11,125 +11,97 @@ using TShockAPI.DB;
 
 #nullable enable
 
-namespace AutoRegister;
-
-[ApiVersion(2, 1)]
-public class AutoRegister : TerrariaPlugin
+namespace AutoRegister
 {
-    public override string Name => "AutoRegister";
-    public override Version Version => new Version(2, 0, 0);
-    public override string Author => "brian91292, moisterrific & HistoryLabs";
-    public override string Description => "Automatically registers accounts for new players with History Labs branding.";
-
-    private readonly ConcurrentDictionary<string, string> _pendingPasswords = new();
-    private static readonly char[] PasswordAlphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789".ToCharArray(); // Removed ambiguous chars (0, O, 1, I)
-
-    public static Config Config = new();
-
-    public AutoRegister(Main game) : base(game) { }
-
-    public override void Initialize()
+    [ApiVersion(2, 1)]
+    public class Plugin : TerrariaPlugin
     {
-        Config = Config.Read();
+        public override string Name => "AutoRegister";
+        public override Version Version => new Version(2, 0, 0);
+        public override string Author => "HistoryLabs";
+        public override string Description => "Automatically registers accounts for new players.";
 
-        ServerApi.Hooks.ServerJoin.Register(this, OnServerJoin);
-        ServerApi.Hooks.NetGreetPlayer.Register(this, OnGreetPlayer, 420);
-    }
+        private readonly ConcurrentDictionary<string, string> _pendingPasswords = new ConcurrentDictionary<string, string>();
+        private static readonly char[] PasswordAlphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789".ToCharArray();
 
-    protected override void Dispose(bool disposing)
-    {
-        if (disposing)
+        public static Config Config = new Config();
+
+        public Plugin(Main game) : base(game) { }
+
+        public override void Initialize()
         {
-            ServerApi.Hooks.ServerJoin.Deregister(this, OnServerJoin);
-            ServerApi.Hooks.NetGreetPlayer.Deregister(this, OnGreetPlayer);
-        }
-        base.Dispose(disposing);
-    }
-
-    private void OnServerJoin(JoinEventArgs args)
-    {
-        var tsConfig = TShock.Config.Settings;
-
-        // Logic guard for configurations where players can't see chat before logging in
-        if (tsConfig.DisableUUIDLogin && !tsConfig.DisableLoginBeforeJoin)
-        {
-            TShock.Log.ConsoleError("[AutoRegister] Plugin will not function properly when DisableUUIDLogin is true AND DisableLoginBeforeJoin is false.");
-            return;
+            Config = Config.Read();
+            ServerApi.Hooks.ServerJoin.Register(this, OnServerJoin);
+            ServerApi.Hooks.NetGreetPlayer.Register(this, OnGreetPlayer, 420);
         }
 
-        if (!tsConfig.RequireLogin && !Main.ServerSideCharacter) return;
-
-        var player = TShock.Players[args.Who];
-        if (player == null || string.IsNullOrWhiteSpace(player.UUID)) return;
-
-        // Check if account already exists by name or UUID
-        var accountByName = TShock.UserAccounts.GetUserAccountByName(player.Name);
-        var accountByUUID = TShock.UserAccounts.GetUserAccounts().FirstOrDefault(acc => acc.UUID == player.UUID);
-
-        if (accountByName == null && accountByUUID == null && player.Name != TSServerPlayer.AccountName)
+        private void OnServerJoin(JoinEventArgs args)
         {
-            string rawPassword = GenerateSecurePassword(Config.PasswordLength);
-            _pendingPasswords[player.UUID] = rawPassword;
+            var tsConfig = TShock.Config.Settings;
+            var player = TShock.Players[args.Who];
 
-            var newAccount = new UserAccount(
-                player.Name,
-                string.Empty, // Password field set via CreateBCryptHash
-                player.UUID,
-                tsConfig.DefaultRegistrationGroupName,
-                DateTime.UtcNow.ToString("s"),
-                DateTime.UtcNow.ToString("s"),
-                string.Empty
-            );
+            if (player == null || string.IsNullOrWhiteSpace(player.UUID)) return;
+            if (!tsConfig.RequireLogin && !Main.ServerSideCharacter) return;
 
-            newAccount.CreateBCryptHash(rawPassword, tsConfig.BCryptWorkFactor);
-            TShock.UserAccounts.AddUserAccount(newAccount);
+            var accountByName = TShock.UserAccounts.GetUserAccountByName(player.Name);
+            // Using a simple list check for maximum compatibility across TShock versions
+            var accountByUUID = TShock.UserAccounts.GetUserAccounts().FirstOrDefault(u => u?.UUID == player.UUID);
 
-            TShock.Log.ConsoleInfo($"[AutoRegister] Auto-registered \"{player.Name}\" ({player.IP})");
-        }
-    }
-
-    private async void OnGreetPlayer(GreetPlayerEventArgs args)
-    {
-        var player = TShock.Players[args.Who];
-        if (player == null || string.IsNullOrWhiteSpace(player.UUID)) return;
-
-        // Give the player a second to finish loading in so they don't miss the message
-        await Task.Delay(1500);
-
-        if (_pendingPasswords.TryRemove(player.UUID, out string? password))
-        {
-            string accent = "ff6347"; // History Labs Tomato
-            string cmd = TShock.Config.Settings.CommandSpecifier;
-
-            player.SendMessage($"[c/{accent}:[Auto-Reg]] Your account \"{player.Name}\" has been created.", Color.White);
-            player.SendMessage($"[c/{accent}:[Auto-Reg]] Temp Password: [c/ffffff:{password}]", Color.White);
-            
-            if (TShock.Config.Settings.DisableUUIDLogin)
+            if (accountByName == null && accountByUUID == null && player.Name != TSServerPlayer.AccountName)
             {
-                player.SendMessage($"[c/{accent}:[Auto-Reg]] Use {cmd}login {password} to sign in.", Color.White);
-            }
+                string rawPassword = GenerateSecurePassword(Config.PasswordLength);
+                _pendingPasswords[player.UUID] = rawPassword;
 
-            player.SendMessage($"[c/{accent}:[Auto-Reg]] Change this using {cmd}password \"new_password\".", Color.White);
-        }
-        else if (!player.IsLoggedIn && TShock.Config.Settings.RequireLogin)
-        {
-            // If they aren't logged in and we didn't just register them, it means the name is taken
-            var account = TShock.UserAccounts.GetUserAccountByName(player.Name);
-            if (account != null && account.UUID != player.UUID)
-            {
-                player.SendErrorMessage("This name is already registered to another player.");
-                player.SendErrorMessage("Please rejoin with a different name.");
+                var newAccount = new UserAccount(
+                    player.Name,
+                    string.Empty,
+                    player.UUID,
+                    tsConfig.DefaultRegistrationGroupName,
+                    DateTime.UtcNow.ToString("s"),
+                    DateTime.UtcNow.ToString("s"),
+                    string.Empty
+                );
+
+                newAccount.CreateBCryptHash(rawPassword, tsConfig.BCryptWorkFactor);
+                TShock.UserAccounts.AddUserAccount(newAccount);
+                TShock.Log.ConsoleInfo($"[AutoRegister] Registered \"{player.Name}\" ({player.IP})");
             }
         }
-    }
 
-    private static string GenerateSecurePassword(int length)
-    {
-        var chars = new char[length];
-        for (int i = 0; i < length; i++)
+        private async void OnGreetPlayer(GreetPlayerEventArgs args)
         {
-            chars[i] = PasswordAlphabet[RandomNumberGenerator.GetInt32(PasswordAlphabet.Length)];
+            var player = TShock.Players[args.Who];
+            if (player == null || string.IsNullOrWhiteSpace(player.UUID)) return;
+
+            await Task.Delay(1500);
+
+            if (_pendingPasswords.TryRemove(player.UUID, out string? password))
+            {
+                string accent = Config.ChatPrefixColor;
+                string cmd = TShock.Config.Settings.CommandSpecifier;
+
+                player.SendMessage($"[c/{accent}:[Auto-Reg]] Account \"{player.Name}\" created.", Color.White);
+                player.SendMessage($"[c/{accent}:[Auto-Reg]] Temp Password: [c/ffffff:{password}]", Color.White);
+                player.SendMessage($"[c/{accent}:[Auto-Reg]] Use {cmd}password to change it.", Color.White);
+            }
         }
-        return new string(chars);
+
+        public static string GenerateSecurePassword(int length)
+        {
+            var chars = new char[length];
+            for (int i = 0; i < length; i++)
+                chars[i] = PasswordAlphabet[RandomNumberGenerator.GetInt32(PasswordAlphabet.Length)];
+            return new string(chars);
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                ServerApi.Hooks.ServerJoin.Deregister(this, OnServerJoin);
+                ServerApi.Hooks.NetGreetPlayer.Deregister(this, OnGreetPlayer);
+            }
+            base.Dispose(disposing);
+        }
     }
 }

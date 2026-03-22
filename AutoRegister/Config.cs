@@ -1,52 +1,50 @@
 using System;
 using System.IO;
+using System.Linq;
+using System.Reflection;
+using System.Runtime.CompilerServices;
 using Newtonsoft.Json;
 using TShockAPI;
 
 #nullable enable
 
-namespace AutoRegister;
-
-/// <summary>
-/// Configuration class for the AutoRegister plugin.
-/// </summary>
-public class Config
+namespace AutoRegister
 {
-    // Length of the generated password
-    public int PasswordLength { get; set; } = 10;
-
-    /// <summary>
-    /// Writes the current configuration to a JSON file.
-    /// </summary>
-    public void Write()
+    public class Config
     {
-        string path = Path.Combine(TShock.SavePath, "AutoRegister.json");
-        File.WriteAllText(path, JsonConvert.SerializeObject(this, Formatting.Indented));
-    }
-
-    /// <summary>
-    /// Reads the configuration from the JSON file or creates a default one.
-    /// </summary>
-    /// <returns>A Config object.</returns>
-    public static Config Read()
-    {
-        string path = Path.Combine(TShock.SavePath, "AutoRegister.json");
+        public int PasswordLength { get; set; } = 10;
         
-        if (!File.Exists(path))
+        // This color code (Tomato) is used for History Labs branding in the chat prefix
+        public string ChatPrefixColor { get; set; } = "ff6347";
+
+        public void Write()
         {
-            var config = new Config();
-            config.Write();
-            return config;
+            string path = Path.Combine(TShock.SavePath, "AutoRegister.json");
+            Directory.CreateDirectory(TShock.SavePath);
+            File.WriteAllText(path, JsonConvert.SerializeObject(this, Formatting.Indented));
         }
 
-        try
+        public static Config Read()
         {
-            return JsonConvert.DeserializeObject<Config>(File.ReadAllText(path)) ?? new Config();
-        }
-        catch (Exception ex)
-        {
-            TShock.Log.ConsoleError($"[AutoRegister] Failed to read config: {ex.Message}");
-            return new Config();
+            string filepath = Path.Combine(TShock.SavePath, "AutoRegister.json");
+            try
+            {
+                Directory.CreateDirectory(TShock.SavePath);
+                if (!File.Exists(filepath))
+                {
+                    Config def = new Config();
+                    def.Write();
+                    return def;
+                }
+                var content = File.ReadAllText(filepath);
+                return JsonConvert.DeserializeObject<Config>(content) ?? new Config();
+            }
+            catch (Exception ex)
+            {
+                TShock.Log.ConsoleError($"[AutoRegister] Config error: {ex.Message}");
+                return new Config();
+            }
         }
     }
+    
 }
